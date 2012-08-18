@@ -436,6 +436,45 @@ class Slim {
     }
 
     /**
+     * Method Not Allowed Handler
+     *
+     * This method defines or invokes the application-wide Method Not Allowed handler.
+     * There are two contexts in which this method may be invoked:
+     *
+     * 1. When declaring the handler:
+     *
+     * If the $callable parameter is not null and is callable, this
+     * method will register the callable to be invoked when at least one 
+     * route matches the path of the current HTTP request, but no routes'
+     * method matches the method of the current HTTP request. It WILL NOT 
+     * invoke the callable.
+     *
+     * 2. When invoking the handler:
+     *
+     * If the $callable parameter is null, Slim assumes you want
+     * to invoke an already-registered handler. If the handler has been
+     * registered and is callable, it is invoked and sends a 405 HTTP Response
+     * whose body is the output of the Method Not Allowed handler.
+     *
+     * @param   mixed $callable Anything that returns true for is_callable()
+     * @return  void
+     */
+    public function methodNotAllowed( $callable = null ) {
+        if ( !is_null($callable) ) {
+            $this->router->methodNotAllowed($callable);
+        } else {
+            ob_start();
+            $customMethodNotAllowedHandler = $this->router->methodNotAllowed();
+            if ( is_callable($customMethodNotAllowedHandler) ) {
+                call_user_func($customMethodNotAllowedHandler);
+            } else {
+                call_user_func(array($this, 'defaultMethodNotAllowed'));
+            }
+            $this->halt(405, ob_get_clean());
+        }
+    }
+
+    /**
      * Not Found Handler
      *
      * This method defines or invokes the application-wide Not Found handler.
@@ -1157,7 +1196,13 @@ class Slim {
             if ( !$dispatched ) {
                 if ( $httpMethodsAllowed ) {
                     $this->response['Allow'] = implode(' ', $httpMethodsAllowed);
-                    $this->halt(405, 'HTTP method not allowed for the requested resource. Use one of these instead: ' . implode(', ', $httpMethodsAllowed)); } else { $this->notFound(); } }
+                    // This implementation discards the httpMethodsAllowed info.  
+                    // Maybe we should save it somewhere for use by methodNotAllowed?
+                    $this->methodNotAllowed(); 
+                } else { 
+                    $this->notFound(); 
+                } 
+            }
             $this->applyHook('slim.after.router');
             $this->stop();
         } catch ( Slim_Exception_Stop $e ) {
@@ -1218,6 +1263,10 @@ class Slim {
      */
     protected function defaultNotFound() {
         echo self::generateTemplateMarkup('404 Page Not Found', '<p>The page you are looking for could not be found. Check the address bar to ensure your URL is spelled correctly. If all else fails, you can visit our home page at the link below.</p><a href="' . $this->request->getRootUri() . '/">Visit the Home Page</a>');
+    }
+
+    protected function defaultMethodNotAllowed() {
+        echo 'HTTP method not allowed for the requested resource. Use one of these instead: ' . implode(', ', $httpMethodsAllowed);
     }
 
     /**

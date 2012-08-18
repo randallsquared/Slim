@@ -68,6 +68,11 @@ class Slim_Router implements Iterator {
     protected $notFound;
 
     /**
+     * @var mixed Callable to be invoked if no matching methods are found on matching routes
+     */
+    protected $methodNotAllowed;
+
+    /**
      * @var mixed Callable to be invoked if application error
      */
     protected $error;
@@ -233,6 +238,18 @@ class Slim_Router implements Iterator {
             }
         }
         return new ArrayIterator($this->namedRoutes);
+    }
+
+    /**
+     * Register a 405 Method Not Allowed callback
+     * @param   mixed $callable Anything that returns TRUE for is_callable()
+     * @return  mixed
+     */
+    public function methodNotAllowed( $callable = null ) {
+        if ( is_callable($callable) ) {
+            $this->methodNotAllowed = $callable;
+        }
+        return $this->methodNotAllowed;
     }
 
     /**
